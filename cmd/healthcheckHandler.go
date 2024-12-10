@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,21 +11,25 @@ import (
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	vm, _ := mem.VirtualMemory()
 
-	memInfo := fmt.Sprintf("Total: %v, Available: %v, UsedPercent:%f%%\n", vm.Total, vm.Available, vm.UsedPercent)
-
 	physicalCnt, _ := cpu.Counts(false)
 	logicalCnt, _ := cpu.Counts(true)
 
-	cpuInfo := fmt.Sprintf("physical count:%d logical count:%d\n", physicalCnt, logicalCnt)
-
-	fmt.Fprintln(w, cpuInfo)
-
 	totalPercent, _ := cpu.Percent(3*time.Second, false)
 	perPercents, _ := cpu.Percent(3*time.Second, true)
-	cpuUsage := fmt.Sprintf("total percent:%v per percents:%v", totalPercent, perPercents)
 
-	fmt.Fprintln(w, cpuUsage)
+	device := make(map[string]interface{})
+	device["mem:total"] = vm.Total
+	device["mem:available"] = vm.Available
+	device["mem:used_percent"] = vm.UsedPercent
+	device["cpu:physical_core"] = physicalCnt
+	device["cpu:logical_core"] = logicalCnt
+	device["cpu:total_percent"] = totalPercent
+	device["cpu:per_percent"] = perPercents
 
-	fmt.Fprintln(w, memInfo)
-
+	//TBD: change a package to handle JSON for higher perfermance
+	err := writeJSON(w, http.StatusOK, device, nil)
+	if err != nil {
+		app.logger.Println(err)
+		http.Error(w, "Server fail to process your Request", http.StatusInternalServerError)
+	}
 }
