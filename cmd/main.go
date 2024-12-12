@@ -15,8 +15,9 @@ type config struct {
 }
 
 type application struct {
-	config config
-	logger *log.Logger
+	config      config
+	loggerInfo  *log.Logger
+	loggerError *log.Logger
 }
 
 func main() {
@@ -26,11 +27,13 @@ func main() {
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
 	flag.Parse()
 
-	logger := log.New(os.Stdout, "RRS: ", log.Ldate|log.Ltime)
+	loggerInfo := log.New(os.Stdout, "RRS::info: ", log.Ldate|log.Ltime)
+	loggerError := log.New(os.Stdout, "RRS::error: ", log.Ldate|log.Ltime)
 
 	app := &application{
-		config: cfg,
-		logger: logger,
+		config:      cfg,
+		loggerInfo:  loggerInfo,
+		loggerError: loggerError,
 	}
 
 	srv := &http.Server{
@@ -41,10 +44,10 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 	}
 
-	app.logger.Printf("start serving %s server on %d port", app.config.env, app.config.port)
+	app.loggerInfo.Printf("start serving %s server on %d port", app.config.env, app.config.port)
 	err := srv.ListenAndServe()
 	if err != nil {
-		app.logger.Fatal(err)
+		app.loggerError.Fatal(err)
 	}
 
 }

@@ -7,7 +7,7 @@ import (
 
 // print to terminal for developer to debug, can write to a logfile
 func (app *application) logError(r *http.Request, err error) {
-	app.logger.Println(err)
+	app.loggerError.Println(err)
 }
 
 // response to API client
@@ -32,7 +32,7 @@ func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Reque
 }
 
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	message := "The resource you are requesting can not be founf"
+	message := "The resource you are requesting can not be found"
 	app.errorResponse(w, r, http.StatusNotFound, message)
 }
 

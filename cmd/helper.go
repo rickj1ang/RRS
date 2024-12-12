@@ -20,11 +20,14 @@ func readIDFromReq(r *http.Request) (int64, error) {
 	return id, nil
 }
 
+type envelope map[string]any
+
 // json write helper
 // data as body set status headers as header write into w
-func writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
+func writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	//TBD: change a package to handle JSON for higher perfermance
-	js, err := json.Marshal(data)
+	// MarshalIndent has lower perfermance than Marshal.
+	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
