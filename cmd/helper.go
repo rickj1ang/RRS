@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 )
@@ -42,5 +44,44 @@ func writeJSON(w http.ResponseWriter, status int, data envelope, headers http.He
 	w.WriteHeader(status)
 	w.Write(js)
 
+	return nil
+}
+
+func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	err := json.NewDecoder(r.Body).Decode(dst)
+	if err != nil {
+		var syntaxError *json.SyntaxError
+		var unmarshalTypeError *json.UnmarshalTypeError
+		var invalidUnmarshalError *json.InvalidUnmarshalError
+
+		switch {
+		// JSON syntax is wrong
+		case errors.As(err, &syntaxError):
+			return fmt.Errorf("body contains badly-formed JSON (at character %d)", syntaxError.Offset)
+
+		// same as io.EOF but in the middle
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return errors.New("badly contains badly-formed JSON")
+
+		// the values not suit the GO struct we want to put them
+		case errors.As(err, &unmarshalTypeError):
+			if unmarshalTypeError.Field != "" {
+				return fmt.Errorf("body contains incorrect JSON type for field %q", unmarshalTypeError.Field)
+			}
+			return fmt.Errorf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
+
+		// request body is io.EOF(nil)
+		case errors.Is(err, io.EOF):
+			return errors.New("Body must have something")
+
+		// we pass a no-nil pointer to Decode()
+		case errors.As(err, &invalidUnmarshalError):
+			panic(err)
+
+		// other errors we can not predict
+		default:
+			return err
+		}
+	}
 	return nil
 }
