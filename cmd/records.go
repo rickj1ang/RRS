@@ -9,8 +9,22 @@ import (
 )
 
 func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "create record")
+	var input struct {
+		Title       string   `json:"title"`
+		Writer      string   `json:"writer,omitempty"`
+		TotalPages  uint16   `json:"total_pages,omitempty"`
+		CurrentPage uint16   `json:"curent_page,omitempty"`
+		Description string   `json:"description,omitempty"`
+		Genres      []string `json:"genres,omitempty"`
+	}
 
+	err := readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	fmt.Fprintf(w, "%+v\n", input)
 }
 
 func (app *application) showRecordHandler(w http.ResponseWriter, r *http.Request) {
