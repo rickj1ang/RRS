@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/rickj1ang/RRS/internal/data"
+	"github.com/rickj1ang/RRS/internal/validator"
 )
 
 func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Request) {
@@ -13,7 +14,7 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 		Title       string   `json:"title"`
 		Writer      string   `json:"writer,omitempty"`
 		TotalPages  uint16   `json:"total_pages,omitempty"`
-		CurrentPage uint16   `json:"curent_page,omitempty"`
+		CurrentPage uint16   `json:"current_page,omitempty"`
 		Description string   `json:"description,omitempty"`
 		Genres      []string `json:"genres,omitempty"`
 	}
@@ -24,28 +25,52 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	fmt.Fprintf(w, "%+v\n", input)
+	v := validator.New()
+
+	record := &data.Record{
+		Title:       input.Title,
+		Writer:      input.Writer,
+		TotalPages:  input.TotalPages,
+		CurrentPage: input.CurrentPage,
+		Description: input.Description,
+		Genres:      input.Genres,
+	}
+	record.Progress = float32(record.CurrentPage) / float32(record.TotalPages)
+	record.CreatedAt = time.Now()
+
+	if data.ValidateRecord(v, record); !v.Valid() {
+		app.failValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	insertId, err := app.models.Records.Insert(record)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+	app.logger.info.Printf("Insert a piece of document which id is %s", insertId)
+
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("records/%s", insertId))
+
+	err = writeJSON(w, http.StatusCreated, envelope{"record": record}, headers)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }
 
 func (app *application) showRecordHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := readIDFromReq(r)
 	if err != nil {
-		app.notFoundResponse(w, r)
+		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	record := data.Record{
-		ID:          id,
-		CreatedAt:   time.Now(),
-		Title:       "Republic",
-		Writer:      "Plato",
-		TotalPages:  400,
-		CurrentPage: 200,
-		Description: "GOod stuff",
-		Genres:      []string{"philo", "conversation"},
+	record, err := app.models.Records.Get("_id", id)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
 	}
-
-	record.Progress = float32(record.CurrentPage) / float32(record.TotalPages)
 
 	//TBD: check id validation
 	err = writeJSON(w, http.StatusOK, envelope{"record": record}, nil)

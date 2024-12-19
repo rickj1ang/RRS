@@ -6,20 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"strings"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func readIDFromReq(r *http.Request) (int64, error) {
+func readIDFromReq(r *http.Request) (primitive.ObjectID, error) {
 	idStr := r.PathValue("id")
 
-	id, err := strconv.ParseInt(idStr, 10, 64)
+	objectID, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		return 0, err
+		return primitive.NilObjectID, err
 	}
-	if id < 1 {
-		return 0, errors.New("id Can not less than 1")
-	}
-	return id, nil
+	return objectID, nil
+
 }
 
 type envelope map[string]any
@@ -48,7 +48,14 @@ func writeJSON(w http.ResponseWriter, status int, data envelope, headers http.He
 }
 
 func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	err := json.NewDecoder(r.Body).Decode(dst)
+	// we set a limit body size 1M it's enough for every record
+	maxBytes := 1_048_576
+	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
+
+	dec := json.NewDecoder(r.Body)
+	// if anything unexpected appear in JSON, it will return error
+	dec.DisallowUnknownFields()
+	err := dec.Decode(dst)
 	if err != nil {
 		var syntaxError *json.SyntaxError
 		var unmarshalTypeError *json.UnmarshalTypeError
@@ -78,10 +85,27 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 		case errors.As(err, &invalidUnmarshalError):
 			panic(err)
 
+		// detect error if it has any wnknown key in JSON it will point it out
+		case strings.HasPrefix(err.Error(), "json: unknown field "):
+			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
+			return fmt.Errorf("body contains unknown key %s", fieldName)
+
+		// the request body larger than 1MB
+		case err.Error() == "http: request body too large":
+			return fmt.Errorf("body must be less than %d bytes", maxBytes)
+
 		// other errors we can not predict
 		default:
 			return err
 		}
+
+	}
+	// we already Decode a JSON value, if we can abstract something
+	// now, it means Bad Request which contains more than one JSON value
+	err = dec.Decode(&struct{}{})
+	if err != io.EOF {
+		return errors.New("body must contains a single JSON value")
+
 	}
 	return nil
 }
