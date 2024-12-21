@@ -55,7 +55,7 @@ func (r RecordModel) Insert(record *Record) (string, error) {
 func (r RecordModel) Get(key string, value any) (*Record, error) {
 	coll := r.CL.Database("RRS").Collection("records")
 
-	filter := bson.D{{key, value}}
+	filter := bson.D{primitive.E{Key: key, Value: value}}
 
 	var result Record
 	err := coll.FindOne(context.TODO(), filter).Decode(&result)
@@ -65,10 +65,28 @@ func (r RecordModel) Get(key string, value any) (*Record, error) {
 	return &result, nil
 }
 
-func (r RecordModel) Update(record *Record) error {
-	return nil
+func structToDoc(v any) (bson.D, error) {
+	data, err := bson.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	var doc bson.D
+	err = bson.Unmarshal(data, &doc)
+	return doc, err
 }
 
-func (r RecordModel) Delete(id int64) error {
+func (r RecordModel) Update(id primitive.ObjectID, record *Record) error {
+	coll := r.CL.Database("RRS").Collection("records")
+	doc, err := structToDoc(record)
+	if err != nil {
+		return err
+	}
+	update := bson.D{primitive.E{Key: "$set", Value: doc}}
+	_, err = coll.UpdateByID(context.TODO(), id, update)
+	return err
+}
+
+func (r RecordModel) Delete(id primitive.ObjectID) error {
 	return nil
 }
