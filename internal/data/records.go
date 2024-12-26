@@ -16,7 +16,8 @@ type RecordModel struct {
 
 // impl MarshalJSON()([]byte, err) method for futhur customize the json
 type Record struct {
-	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
+	LastChange  time.Time `json:"last_change" bson:"last_change"`
+	Owner       string    `json:"owner" bson:"owner"`
 	Title       string    `json:"title" bson:"title"`
 	Writer      string    `json:"writer" bson:"writer,omitempty"`
 	TotalPages  uint16    `json:"total_pages" bson:"total_pages"`
@@ -29,6 +30,7 @@ type Record struct {
 func ValidateRecord(v *validator.Validator, record *Record) {
 	v.Check(record.Title != "", "title", "must be provided")
 	v.Check(len(record.Title) <= 500, "title", "must not be more than 500 bytes long")
+	v.Check(len(record.Owner) > 0, "owner", "every record must have a onwer")
 
 	v.Check(record.TotalPages > 0, "page", "must have a positive total page")
 	v.Check(record.CurrentPage >= 0, "page", "must have a positive current page")
@@ -39,7 +41,7 @@ func ValidateRecord(v *validator.Validator, record *Record) {
 }
 
 func (r RecordModel) Insert(record *Record) (string, error) {
-	coll := r.CL.Database("RRS").Collection("records")
+	coll := connectRRSrecords(r)
 
 	res, err := coll.InsertOne(context.TODO(), record)
 	if err != nil {
@@ -53,7 +55,7 @@ func (r RecordModel) Insert(record *Record) (string, error) {
 // give an arbitary key-value pair return the record sruct and err
 // key must be string val can be any
 func (r RecordModel) Get(key string, value any) (*Record, error) {
-	coll := r.CL.Database("RRS").Collection("records")
+	coll := connectRRSrecords(r)
 
 	filter := bson.D{primitive.E{Key: key, Value: value}}
 
@@ -65,19 +67,8 @@ func (r RecordModel) Get(key string, value any) (*Record, error) {
 	return &result, nil
 }
 
-func structToDoc(v any) (bson.D, error) {
-	data, err := bson.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-
-	var doc bson.D
-	err = bson.Unmarshal(data, &doc)
-	return doc, err
-}
-
 func (r RecordModel) Update(id primitive.ObjectID, record *Record) error {
-	coll := r.CL.Database("RRS").Collection("records")
+	coll := connectRRSrecords(r)
 	doc, err := structToDoc(record)
 	if err != nil {
 		return err
@@ -87,6 +78,13 @@ func (r RecordModel) Update(id primitive.ObjectID, record *Record) error {
 	return err
 }
 
-func (r RecordModel) Delete(id primitive.ObjectID) error {
-	return nil
+func (r RecordModel) Delete(id primitive.ObjectID) (int64, error) {
+	coll := connectRRSrecords(r)
+	filter := bson.D{primitive.E{Key: "_id", Value: id}}
+	res, err := coll.DeleteOne(context.TODO(), filter)
+	n := res.DeletedCount
+	if err != nil {
+		return -1, err
+	}
+	return n, nil
 }
