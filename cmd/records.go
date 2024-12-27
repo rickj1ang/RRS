@@ -48,7 +48,7 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 	}
 
-	app.logger.info.Printf("Insert a piece of document which id is %s", insertId)
+	app.logger.PrintInfo(fmt.Sprintf("Insert a piece of document which id is %s", insertId), nil)
 
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("records/%s", insertId))

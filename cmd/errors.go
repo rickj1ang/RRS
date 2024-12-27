@@ -7,7 +7,10 @@ import (
 
 // print to terminal for developer to debug, can write to a logfile
 func (app *application) logError(r *http.Request, err error) {
-	app.logger.error.Println(err)
+	app.logger.PrintError(err, map[string]string{
+		"request_method": r.Method,
+		"request_url":    r.URL.String(),
+	})
 }
 
 // response to API client
