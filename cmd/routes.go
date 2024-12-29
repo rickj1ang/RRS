@@ -2,7 +2,7 @@ package main
 
 import "net/http"
 
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthcheck", app.healthcheckHandler)
 	mux.HandleFunc("GET /records", app.listRecordsHandler)
@@ -15,5 +15,5 @@ func (app *application) routes() *http.ServeMux {
 	// stairs. app.notFoundResponse will out
 	mux.HandleFunc("/", app.notFoundResponse)
 
-	return mux
+	return app.recoverPanic(app.rateLimit(mux))
 }
