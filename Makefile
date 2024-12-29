@@ -1,10 +1,10 @@
 .PHONY: run
 run: build
-	bin/main
+	bin/rrs
 
 .PHONY: build
 build:
-	go build -o bin/main ./cmd 
+	go build -o bin/rrs ./cmd 
 
 .PHONY: push
 push:
