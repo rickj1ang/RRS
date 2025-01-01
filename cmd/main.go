@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/rickj1ang/RRS/internal/data"
@@ -27,6 +28,7 @@ type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	wg     sync.WaitGroup
 }
 
 func main() {
