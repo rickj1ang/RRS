@@ -19,3 +19,7 @@ func structToDoc(v any) (bson.D, error) {
 func connectRRSrecords(r RecordModel) *mongo.Collection {
 	return r.CL.Database("RRS").Collection("records")
 }
+
+func connectRRSusers(u UserModel) *mongo.Collection {
+	return u.CL.Database("RRS").Collection("users")
+}
