@@ -23,3 +23,7 @@ func connectRRSrecords(r RecordModel) *mongo.Collection {
 func connectRRSusers(u UserModel) *mongo.Collection {
 	return u.CL.Database("RRS").Collection("users")
 }
+
+func connectRRStokens(t TokenModel) *mongo.Collection {
+	return t.CL.Database("RRS").Collection("tokens")
+}

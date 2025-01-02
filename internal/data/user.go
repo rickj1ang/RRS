@@ -16,6 +16,8 @@ var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
 
+var AnonymousUser = &User{}
+
 type UserModel struct {
 	CL *mongo.Client
 }
@@ -182,4 +184,8 @@ func (u UserModel) Delete(id primitive.ObjectID) error {
 		return err
 	}
 	return nil
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
