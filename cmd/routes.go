@@ -13,6 +13,9 @@ func (app *application) routes() http.Handler {
 	//user
 	mux.HandleFunc("POST /users", app.registerUserHandler)
 	mux.HandleFunc("GET /lord/{id}", app.givePowerHandler)
+
+	//authentication
+	mux.HandleFunc("POST /tokens/authentication", app.createAuthenticationTokenHandler)
 	// this is a kind of custom Notfound page
 	// if the URL do not match the routes up
 	// stairs. app.notFoundResponse will out
