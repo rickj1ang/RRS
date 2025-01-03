@@ -61,3 +61,30 @@ func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *htt
 	message := "invalid authentication credentials"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
+
+func (app *application) invalidAuthenticationResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+
+	message := "invalid or missing authentication token"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	message := "You must be authenticated to access this resource"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
+	message := "dead man can not access this resource, ask manager to get some power"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+func (app *application) userBanedResponse(w http.ResponseWriter, r *http.Request) {
+	message := "U R banned, confession"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+func (app *application) notLordResponse(w http.ResponseWriter, r *http.Request) {
+	message := "only Lord can do this"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
