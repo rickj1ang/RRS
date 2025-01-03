@@ -49,6 +49,7 @@ func (u UserLevel) String() string {
 }
 
 type User struct {
+	ID primitive.ObjectID `json:"-" bson:"_id,omitempty"`
 	//email
 	Email string `json:"email" bson:"email"`
 	//password

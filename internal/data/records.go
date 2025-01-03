@@ -16,15 +16,15 @@ type RecordModel struct {
 
 // impl MarshalJSON()([]byte, err) method for futhur customize the json
 type Record struct {
-	LastChange  time.Time `json:"last_change" bson:"last_change"`
-	Owner       string    `json:"owner" bson:"owner"`
-	Title       string    `json:"title" bson:"title"`
-	Writer      string    `json:"writer" bson:"writer,omitempty"`
-	TotalPages  uint16    `json:"total_pages" bson:"total_pages"`
-	CurrentPage uint16    `json:"current_page" bson:"current_page"`
-	Progress    float32   `json:"progress" bson:"progress"`
-	Description string    `json:"description,omitempty" bson:"description,omitempty"`
-	Genres      []string  `json:"genres,omitempty" bson:"genres,omitempty"`
+	LastChange  time.Time          `json:"last_change" bson:"last_change"`
+	Owner       primitive.ObjectID `json:"owner" bson:"owner"`
+	Title       string             `json:"title" bson:"title"`
+	Writer      string             `json:"writer" bson:"writer,omitempty"`
+	TotalPages  uint16             `json:"total_pages" bson:"total_pages"`
+	CurrentPage uint16             `json:"current_page" bson:"current_page"`
+	Progress    float32            `json:"progress" bson:"progress"`
+	Description string             `json:"description,omitempty" bson:"description,omitempty"`
+	Genres      []string           `json:"genres,omitempty" bson:"genres,omitempty"`
 }
 
 func ValidateRecord(v *validator.Validator, record *Record) {
@@ -40,16 +40,16 @@ func ValidateRecord(v *validator.Validator, record *Record) {
 	v.Check(validator.Unique(record.Genres), "genres", "genres can not be dupicate")
 }
 
-func (r RecordModel) Insert(record *Record) (string, error) {
+func (r RecordModel) Insert(record *Record) (primitive.ObjectID, error) {
 	coll := connectRRSrecords(r)
 
 	res, err := coll.InsertOne(context.TODO(), record)
 	if err != nil {
-		return "Fail to insert", err
+		return primitive.NilObjectID, err
 	}
-	stringID := res.InsertedID.(primitive.ObjectID).Hex()
+	id := res.InsertedID.(primitive.ObjectID)
 
-	return stringID, nil
+	return id, nil
 }
 
 // give an arbitary key-value pair return the record sruct and err

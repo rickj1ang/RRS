@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/rickj1ang/RRS/internal/validator"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -70,4 +72,20 @@ func (t TokenModel) Insert(token *Token) error {
 		return err
 	}
 	return nil
+}
+
+func (t TokenModel) GetEmailbyToken(scope, tokenPlaintext string) (string, error) {
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+	var dst struct {
+		Email string `json:"email" bson:"email"`
+	}
+
+	coll := connectRRStokens(t)
+	filter := bson.D{primitive.E{Key: "hash", Value: tokenHash}, primitive.E{Key: "scope", Value: scope}}
+	err := coll.FindOne(context.TODO(), filter).Decode(&dst)
+	if err != nil {
+		return "", err
+	}
+
+	return dst.Email, nil
 }
