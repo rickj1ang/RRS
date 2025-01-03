@@ -27,6 +27,7 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 
 	v := validator.New()
 
+	user := app.contextGetUser(r)
 	record := &data.Record{
 		Title:       input.Title,
 		Writer:      input.Writer,
@@ -34,6 +35,7 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 		CurrentPage: input.CurrentPage,
 		Description: input.Description,
 		Genres:      input.Genres,
+		Owner:       user.ID,
 	}
 	record.Progress = float32(record.CurrentPage) / float32(record.TotalPages)
 	record.LastChange = time.Now()
@@ -48,10 +50,13 @@ func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Reque
 		app.serverErrorResponse(w, r, err)
 	}
 
-	app.logger.PrintInfo(fmt.Sprintf("Insert a piece of document which id is %s", insertId), nil)
+	user.Records = append(user.Records, insertId)
+	err = app.models.Users.Update("_id", user.ID, user)
+
+	app.logger.PrintInfo(fmt.Sprintf("Insert a piece of document which id is %s", insertId.Hex()), nil)
 
 	headers := make(http.Header)
-	headers.Set("Location", fmt.Sprintf("records/%s", insertId))
+	headers.Set("Location", fmt.Sprintf("records/%s", insertId.Hex()))
 
 	err = writeJSON(w, http.StatusCreated, envelope{"record": record}, headers)
 	if err != nil {
