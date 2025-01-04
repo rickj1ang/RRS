@@ -88,3 +88,8 @@ func (app *application) notLordResponse(w http.ResponseWriter, r *http.Request) 
 	message := "only Lord can do this"
 	app.errorResponse(w, r, http.StatusForbidden, message)
 }
+
+func (app *application) untouchableResponse(w http.ResponseWriter, r *http.Request) {
+	message := "U R not allowed to touch these things"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
