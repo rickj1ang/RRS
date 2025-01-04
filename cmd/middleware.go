@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/validator"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/time/rate"
 )
@@ -152,6 +154,18 @@ func (app *application) requireNormalUser(next http.HandlerFunc) http.HandlerFun
 		if user.Level == 0 {
 			app.inactiveAccountResponse(w, r)
 			return
+		}
+
+		id, err := readIDFromReq(r)
+		if err != nil {
+			app.badRequestResponse(w, r, err)
+		}
+
+		if id != primitive.NilObjectID {
+			if !slices.Contains(user.Records, id) {
+				app.untouchableResponse(w, r)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)
