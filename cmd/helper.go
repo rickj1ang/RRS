@@ -16,6 +16,9 @@ import (
 
 func readIDFromReq(r *http.Request) (primitive.ObjectID, error) {
 	idStr := r.PathValue("id")
+	if idStr == "" {
+		return primitive.NilObjectID, nil
+	}
 
 	objectID, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
