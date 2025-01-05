@@ -7,6 +7,7 @@ import (
 
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/validator"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Request) {
@@ -146,6 +147,7 @@ func (app *application) updateRecordHandler(w http.ResponseWriter, r *http.Reque
 	if input.CurrentPage != nil {
 		record.CurrentPage = *input.CurrentPage
 		record.Progress = float32(record.CurrentPage) / float32(record.TotalPages)
+		record.LastChange = time.Now()
 	}
 	if input.Description != nil {
 		record.Description = *input.Description
@@ -155,7 +157,6 @@ func (app *application) updateRecordHandler(w http.ResponseWriter, r *http.Reque
 	}
 	v := validator.New()
 
-	record.LastChange = time.Now()
 	if data.ValidateRecord(v, record); !v.Valid() {
 		app.failValidationResponse(w, r, v.Errors)
 		return
@@ -197,4 +198,43 @@ func (app *application) listRecordsHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	fmt.Fprintf(w, "%+v\n", input)
+}
+
+func (app *application) readBookHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := readIDFromReq(r)
+	if err != nil || id == primitive.NilObjectID {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	page, err := readPageFromReq(r)
+	if err != nil || page == -1 {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	record, err := app.models.Records.Get("_id", id)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+	v.Check(record.TotalPages >= uint16(page), "page", "current page can not bigger than total pages")
+	v.Check(page >= 0, "page", "page must bigger than 0")
+	if !v.Valid() {
+		app.failValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	record.CurrentPage = uint16(page)
+	record.Progress = float32(record.CurrentPage) / float32(record.TotalPages)
+
+	err = app.models.Records.Update(id, record)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = writeJSON(w, http.StatusCreated, envelope{"update": fmt.Sprintf("Now you read to %f of the %s", record.Progress, record.Title)}, nil)
 }

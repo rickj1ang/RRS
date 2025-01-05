@@ -10,6 +10,7 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("GET /records/{id}", app.requireNormalUser(app.showRecordHandler))
 	mux.HandleFunc("DELETE /records/{id}", app.requireNormalUser(app.deleteRecordHandler))
 	mux.HandleFunc("PATCH /records/{id}", app.requireNormalUser(app.updateRecordHandler))
+	mux.HandleFunc("PATCH /records/{id}/{page}", app.requireNormalUser(app.readBookHandler))
 	//user
 	mux.HandleFunc("POST /users", app.registerUserHandler)
 	mux.HandleFunc("GET /lord/{id}", app.requireGod(app.givePowerHandler))

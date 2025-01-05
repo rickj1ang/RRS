@@ -28,6 +28,16 @@ func readIDFromReq(r *http.Request) (primitive.ObjectID, error) {
 
 }
 
+func readPageFromReq(r *http.Request) (int, error) {
+	page := r.PathValue("page")
+	if page == "" {
+		return -1, nil
+	}
+
+	intPage, err := strconv.Atoi(page)
+	return intPage, err
+}
+
 type envelope map[string]any
 
 // json write helper
