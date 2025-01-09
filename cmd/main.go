@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/jsonlog"
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,19 +43,19 @@ func main() {
 
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
+	redisClient := openRedisClient()
 	client, err := openMongoClient(cfg)
 	if err != nil {
 		// we can not use app.logger.error Now, before we declare it
 		// it not beatiful but it is what it is
 		logger.PrintFatal(err, nil)
 	}
-
 	defer client.Disconnect(context.TODO())
 
 	app := &application{
 		config: cfg,
 		logger: logger,
-		models: data.NewModels(client),
+		models: data.NewModels(client, redisClient),
 	}
 
 	err = app.serve()
@@ -83,4 +84,14 @@ func openMongoClient(cfg config) (*mongo.Client, error) {
 	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
 
 	return client, nil
+}
+
+func openRedisClient() *redis.Client {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "redis-17465.crce178.ap-east-1-1.ec2.redns.redis-cloud.com:17465",
+		Username: "default",
+		Password: "9xYCBhdjqy1g8MHGqX6XFhM1vTvCveN3",
+		DB:       0,
+	})
+	return rdb
 }

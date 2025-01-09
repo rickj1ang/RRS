@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/validator"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -109,10 +110,10 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		email, err := app.models.Tokens.GetEmailbyToken(data.ScopeAuthentication, token)
+		id, err := app.models.Tokens.GetIdByToken(token)
 		if err != nil {
 			switch {
-			case errors.Is(err, mongo.ErrNoDocuments):
+			case errors.Is(err, redis.Nil):
 				app.invalidAuthenticationResponse(w, r)
 			default:
 				app.serverErrorResponse(w, r, err)
@@ -120,7 +121,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		user, err := app.models.Users.Get("email", email)
+		user, err := app.models.Users.Get("_id", id)
 		if err != nil {
 			switch {
 			case errors.Is(err, mongo.ErrNoDocuments):

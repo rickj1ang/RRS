@@ -2,9 +2,10 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/validator"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,6 +34,7 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		app.failValidationResponse(w, r, v.Errors)
 		return
 	}
+	fmt.Println("1")
 
 	user, err := app.models.Users.Get("email", input.Email)
 	if err != nil {
@@ -56,9 +58,14 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 
-	token, err := app.models.Tokens.New(input.Email, 24*time.Hour, data.ScopeAuthentication)
+	token, err := app.models.Tokens.GiveToken(user.ID)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		switch {
+		case errors.Is(err, redis.Nil):
+			app.invalidCredentialsResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 

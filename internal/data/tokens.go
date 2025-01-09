@@ -7,42 +7,18 @@ import (
 	"encoding/base32"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/rickj1ang/RRS/internal/validator"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-const ScopeAuthentication = "authentication"
-
-type Token struct {
-	Plaintext string    `json:"token" bson:"token"`
-	Hash      []byte    `json:"-" bson:"hash"`
-	UserEmail string    `json:"-" bson:"email"`
-	Expiry    time.Time `json:"expiry" bson:"expiry"`
-	Scope     string    `json:"-" bson:"scope"`
+type TokenRedis struct {
+	CL *redis.Client
 }
 
-func generateToken(userEmail string, ttl time.Duration, scope string) (*Token, error) {
-	token := &Token{
-		UserEmail: userEmail,
-		Expiry:    time.Now().Add(ttl),
-		Scope:     scope,
-	}
-
-	randomBytes := make([]byte, 16)
-
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	token.Plaintext = base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(randomBytes)
-
-	hash := sha256.Sum256([]byte(token.Plaintext))
-	token.Hash = hash[:]
-
-	return token, nil
+type PassHash struct {
+	plaintext string
+	hash      [32]byte
 }
 
 func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
@@ -50,42 +26,45 @@ func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
 	v.Check(len(tokenPlaintext) == 26, "token", "must be 26 bytes long")
 }
 
-type TokenModel struct {
-	CL *mongo.Client
+func generateHash() (*PassHash, error) {
+	randomBytes := make([]byte, 16)
+	token := &PassHash{}
+
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return token, err
+	}
+
+	token.plaintext = base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(randomBytes)
+
+	token.hash = sha256.Sum256([]byte(token.plaintext))
+	return token, nil
 }
 
-func (t TokenModel) New(userEmail string, ttl time.Duration, scope string) (*Token, error) {
-	token, err := generateToken(userEmail, ttl, scope)
+func (t TokenRedis) GiveToken(id primitive.ObjectID) (*string, error) {
+	token, err := generateHash()
 	if err != nil {
 		return nil, err
 	}
 
-	err = t.Insert(token)
-	return token, err
+	err = t.CL.Set(context.TODO(), string(token.hash[:]), id.Hex(), 24*time.Hour).Err()
+	if err != nil {
+		return nil, err
+	}
 
+	return &token.plaintext, nil
 }
 
-func (t TokenModel) Insert(token *Token) error {
-	coll := connectRRStokens(t)
-	_, err := coll.InsertOne(context.TODO(), token)
+func (t TokenRedis) GetIdByToken(plaintext string) (primitive.ObjectID, error) {
+	hash := sha256.Sum256([]byte(plaintext))
+	idStr, err := t.CL.Get(context.TODO(), string(hash[:])).Result()
 	if err != nil {
-		return err
+		return primitive.NilObjectID, err
 	}
-	return nil
-}
-
-func (t TokenModel) GetEmailbyToken(scope, tokenPlaintext string) (string, error) {
-	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
-	var dst struct {
-		Email string `json:"email" bson:"email"`
-	}
-
-	coll := connectRRStokens(t)
-	filter := bson.D{primitive.E{Key: "hash", Value: tokenHash}, primitive.E{Key: "scope", Value: scope}}
-	err := coll.FindOne(context.TODO(), filter).Decode(&dst)
+	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		return "", err
+		return primitive.NilObjectID, err
 	}
 
-	return dst.Email, nil
+	return id, nil
 }
