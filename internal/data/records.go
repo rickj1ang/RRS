@@ -67,6 +67,27 @@ func (r RecordModel) Get(key string, value any) (*Record, error) {
 	return &result, nil
 }
 
+func (r RecordModel) GetAll(userID primitive.ObjectID) ([]Record, error) {
+	coll := connectRRSrecords(r)
+
+	filter := bson.D{primitive.E{Key: "owner", Value: userID}}
+	cur, err := coll.Find(context.TODO(), filter)
+	if err != nil {
+		return nil, err
+	}
+	var res []Record
+
+	if err = cur.All(context.TODO(), &res); err != nil {
+		return nil, err
+	}
+
+	err = cur.Close(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 func (r RecordModel) Update(id primitive.ObjectID, record *Record) error {
 	coll := connectRRSrecords(r)
 	doc, err := structToDoc(record)

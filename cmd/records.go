@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/rickj1ang/RRS/internal/data"
 	"github.com/rickj1ang/RRS/internal/validator"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func (app *application) createRecordHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,6 +200,26 @@ func (app *application) listRecordsHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	fmt.Fprintf(w, "%+v\n", input)
+}
+
+func (app *application) listAllRecordsHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.contextGetUser(r)
+	res, err := app.models.Records.GetAll(user.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = writeJSON(w, http.StatusFound, envelope{"records": res}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 }
 
 func (app *application) readBookHandler(w http.ResponseWriter, r *http.Request) {
