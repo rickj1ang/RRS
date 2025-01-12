@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/redis/go-redis/v9"
@@ -34,7 +33,6 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		app.failValidationResponse(w, r, v.Errors)
 		return
 	}
-	fmt.Println("1")
 
 	user, err := app.models.Users.Get("email", input.Email)
 	if err != nil {
