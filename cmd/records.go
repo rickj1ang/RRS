@@ -258,5 +258,8 @@ func (app *application) readBookHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	user := app.contextGetUser(r)
+	app.models.Notify.Publish(user.Email)
+
 	err = writeJSON(w, http.StatusCreated, envelope{"update": fmt.Sprintf("Now you read to %f of the %s", record.Progress, record.Title)}, nil)
 }

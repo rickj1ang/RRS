@@ -15,6 +15,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type config struct {
@@ -45,6 +47,7 @@ func main() {
 
 	redisClient := openRedisClient()
 	client, err := openMongoClient(cfg)
+	conn := connectMQ()
 	if err != nil {
 		// we can not use app.logger.error Now, before we declare it
 		// it not beatiful but it is what it is
@@ -55,8 +58,10 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
-		models: data.NewModels(client, redisClient),
+		models: data.NewModels(client, redisClient, conn),
 	}
+
+	go app.models.Notify.Subscribe()
 
 	err = app.serve()
 	if err != nil {
@@ -94,4 +99,13 @@ func openRedisClient() *redis.Client {
 		DB:       0,
 	})
 	return rdb
+}
+
+func connectMQ() *amqp.Connection {
+	conn, err := amqp.Dial("amqps://oqwhsvhx:pbtoNpE6D7Xiwcns1W2V-za6R4ZMNzbh@gerbil.rmq.cloudamqp.com/oqwhsvhx")
+	if err != nil {
+		panic(err)
+	}
+
+	return conn
 }
